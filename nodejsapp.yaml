@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodejs-app
+  namespace: default
+  labels:
+    app: nodejs-app
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: nodejs-app
+
+  template:
+    metadata:
+      labels:
+        app: nodejs-app
+
+    spec:
+      containers:
+        - name: nodejs-app
+          image: swetharoyal/node-app:latest
+
+          ports:
+            - containerPort: 3000
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodejs-service
+  namespace: default
+
+spec:
+  selector:
+    app: nodejs-app
+
+  type: LoadBalancer
+
+  ports:
+    - port: 80
+      targetPort: 3000
+      nodeport: 30001
+      

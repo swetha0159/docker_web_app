@@ -79,22 +79,44 @@ pipeline {
             }
         }
 
-        stage('Connect to Existing EKS Cluster') {
-            steps {
-                script {
-                    echo "Connecting to existing EKS cluster: ${CLUSTER_NAME}"
+       stage('Create/Check EKS Cluster') {
+    steps {
+        script {
+            echo "Checking if EKS Cluster '${CLUSTER_NAME}' exists..."
 
-                    sh '''
-                        aws eks update-kubeconfig \
-                            --name "${CLUSTER_NAME}" \
-                            --region "${AWS_REGION}"
+            def clusterExists = sh(
+                script: "eksctl get cluster --name ${CLUSTER_NAME} --region ${AWS_REGION}",
+                returnStatus: true
+            ) == 0
 
-                        kubectl get nodes
-                    '''
-                }
+            if (!clusterExists) {
+                echo "Cluster does not exist. Creating the EKS Cluster..."
+
+                sh """
+                    eksctl create cluster \
+                        --name ${CLUSTER_NAME} \
+                        --region ${AWS_REGION} \
+                        --nodegroup-name worker-nodes \
+                        --node-type c7i-flex.large \
+                        --nodes 2 \
+                        --managed
+                """
+            } else {
+                echo "Cluster already exists. Skipping creation."
             }
-        }
 
+            echo "Updating kubeconfig..."
+
+            sh """
+                aws eks update-kubeconfig \
+                    --name ${CLUSTER_NAME} \
+                    --region ${AWS_REGION}
+            """
+
+            echo "EKS Cluster configuration completed successfully."
+        }
+    }
+}
         stage('Deploy NodeJS App on EKS') {
             steps {
                 script {

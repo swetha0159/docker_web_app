@@ -117,51 +117,7 @@ pipeline {
         }
     }
 }
-        stage('Deploy NodeJS App on EKS') {
-            steps {
-                script {
-                    echo "Deploying NodeJS App to EKS..."
-
-                    sh '''
-                        kubectl apply -f nodejsapp.yaml
-
-                        echo "Checking deployment..."
-                        kubectl get deployment nodejs-app
-
-                        echo "Checking pods..."
-                        kubectl get pods -l app=nodejs-app
-
-                        echo "Checking service..."
-                        kubectl get svc nodejs-service
-
-                        echo "Waiting for LoadBalancer and Pod readiness..."
-
-                        for i in {1..30}; do
-
-                            HOSTNAME=$(kubectl get svc nodejs-service \
-                                -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || true)
-
-                            READY=$(kubectl get pods \
-                                -l app=nodejs-app \
-                                -o jsonpath="{.items[0].status.containerStatuses[0].ready}" 2>/dev/null || true)
-
-                            if [ -n "$HOSTNAME" ] && [ "$READY" = "true" ]; then
-                                echo "==========================================="
-                                echo "NodeJS Application Deployed Successfully"
-                                echo "Application URL: http://$HOSTNAME"
-                                echo "==========================================="
-                                break
-                            fi
-
-                            echo "Waiting... ($i/30)"
-                            sleep 20
-                        done
-                    '''
-                }
-            }
-        }
-    }
-
+       
     post {
         always {
             echo 'Pipeline execution finished.'
